@@ -2,6 +2,6 @@
  Made using C++
 
  To-do:
- - Menu to switch etween  ROMs
+ - Menu to switch between ROMs
  - Settings to customize input buttons
  - Add sound emulation
