@@ -1,3 +1,5 @@
+#define SDL_MAIN_HANDLED
+
 #include <iostream>
 #include <chrono>
 #include <thread>
@@ -7,6 +9,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_timer.h>
 
+#include <stdio.h>
 
 uint16_t index_register{};
 uint16_t program_counter{};
@@ -20,6 +23,7 @@ uint32_t display[64 * 32]{};
 uint8_t keys[16]{};
 std::ifstream rom_file;
 std::string info;
+std::string rom_files[3] = {"LunarLander", "Pong", "Tetris"};
 
 unsigned char fontset[80] =
 { 
@@ -65,6 +69,53 @@ public:
 		SDL_Quit();
 	}
 
+    void showLeftArrow() {
+        SDL_Surface * surface = SDL_LoadBMP("src/textures/left_arrow.bmp");
+        SDL_Texture * lArrow = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_Rect lArrowCrop = {0,0,10,32};
+        SDL_Rect lArrowPos = {0,16,10*20,32*20};
+        SDL_RenderCopy(renderer, lArrow, &lArrowCrop, &lArrowPos);
+
+        SDL_FreeSurface(surface);
+        SDL_DestroyTexture(lArrow);
+    }
+
+    void showRightArrow() {
+        SDL_Surface * surface = SDL_LoadBMP("src/textures/right_arrow.bmp");
+        SDL_Texture * rArrow = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_Rect rArrowCrop = {54,0,10,32};
+        SDL_Rect rArrowPos = {54*20,16,10*20,32*20};
+        SDL_RenderCopy(renderer, rArrow, &rArrowCrop, &rArrowPos);
+
+        SDL_FreeSurface(surface);
+        SDL_DestroyTexture(rArrow);
+    }
+
+    void UpdateBMP(int imgIndex)
+	{
+        std::string path = "src/textures/" + rom_files[imgIndex] + ".bmp";
+        SDL_Surface * surface = SDL_LoadBMP(&path[0]);
+        SDL_Texture * img = SDL_CreateTextureFromSurface(renderer, surface);
+        
+		SDL_Rect img_rect;
+        img_rect.x = 0;
+        img_rect.y = 0;
+        img_rect.w = 64*20;
+        img_rect.h = 32*20;
+        SDL_RenderClear(renderer);
+		SDL_RenderCopy(renderer, img, nullptr, &img_rect);
+        if(imgIndex > 0) {
+            showLeftArrow();
+        }
+        if(imgIndex < sizeof(rom_files)/sizeof(rom_files[0]) - 1) {
+            showRightArrow();
+        }
+		SDL_RenderPresent(renderer);
+
+        SDL_FreeSurface(surface);
+        SDL_DestroyTexture(img);
+	}
+
 	void Update(void const* buffer, int pitch)
 	{
 		SDL_UpdateTexture(texture, nullptr, buffer, pitch);
@@ -72,6 +123,11 @@ public:
 		SDL_RenderCopy(renderer, texture, nullptr, nullptr);
 		SDL_RenderPresent(renderer);
 	}
+
+    void ClearRender() {
+        SDL_RenderClear(renderer);
+        SDL_RenderPresent(renderer);
+    }
 
 	bool ProcessInput(uint8_t* keys)
 	{
@@ -276,20 +332,32 @@ private:
 	SDL_Texture* texture{};
 };
 
+void rom_selector(Platform &platform, int selectedRom) {
+    platform.UpdateBMP(selectedRom);
+}
+
 void initialize_font() {
     for(int i = 0; i < 80; i++) {
         memory[0x050 + i] = fontset[i];
     }
 }
 
-void load_memory() {
+void clear_memory() {
+    for(int i = 0; i < sizeof(memory)/sizeof(memory[0]); i++) {
+        memory[i] = 0;
+    }
+}
+
+void clear_display() {
+    for(int i = 0; i < sizeof(display)/sizeof(display[0]); i++) {
+        display[i] = 0;
+    }
+}
+
+void load_memory(int fileIndex) {
     int START_ADDRESS = 0x200U;
-    rom_file.open("IBM Logo.ch8", std::ios::binary);
-    if(rom_file.is_open()) {
-        /*for(int i = 0; rom_file.good(); i++) {
-            rom_file >> memory[i];
-        } */
-       
+    rom_file.open("rom_files\\" + rom_files[fileIndex] + ".ch8", std::ios::binary);
+    if(rom_file.is_open()) {       
        rom_file.seekg(0, std::ios::end);
        int size = rom_file.tellg();
        char * buffer = new char[size];
@@ -310,9 +378,6 @@ void load_memory() {
     }
 }
 
-void fetch() {
-}
-
 void decode() {
     uint16_t oppcode = (memory[program_counter] << 8) | memory[program_counter + 1];
     uint16_t Vx = (oppcode & 0x0F00u) >> 8;
@@ -320,8 +385,6 @@ void decode() {
     uint16_t nnn = oppcode & 0x0FFFu;
     uint16_t n = oppcode & 0x000Fu;
     uint16_t kk = oppcode & 0x00FFu;
-
-    //std::cout << "current oppcode = " << std::hex << oppcode << std::endl;
 
     program_counter += 2U;
 
@@ -367,60 +430,50 @@ void decode() {
         break;
 
         case 0x3000:
-            /* reffer to thing */
             if(registers[Vx] == kk) {
                 program_counter += 2;
             }
         break;
 
         case 0x4000:
-            /* code */
             if(registers[Vx] != kk) {
                 program_counter += 2;
             }
         break;
         
         case 0x5000:
-            /* code */
             if(registers[Vx] == registers[Vy]) {
                 program_counter += 2;
             }
         break;
 
-        case 0x6000:
-            /* code */
+        case 0x6000:  
             registers[Vx] = kk;
         break;
 
         case 0x7000:
-            /* code */
             registers[Vx] += kk;
         break;
 
         case 0x8000:
             switch (oppcode & 0x000F) {
                 case 0x0000:
-                    /* code */
                     registers[Vx] = registers[Vy];
                 break;
             
                 case 0x0001:
-                    /* code */
                     registers[Vx] |= registers[Vy];
                 break;
 
-                case 0x0002:
-                    /* code */
+                case 0x0002:  
                     registers[Vx] &= registers[Vy];
                 break;
 
                 case 0x0003:
-                    /* code */
                     registers[Vx] ^= registers[Vy];
                 break;
 
                 case 0x0004: {
-                    /* code */
                     uint16_t sum = registers[Vx] + registers[Vy];
 
                     if(registers[Vx] > 255U) {
@@ -430,11 +483,10 @@ void decode() {
                     }
 
                     registers[Vx] = sum & 0x00FF;
-                break;
+                    break;
                 }
 
                 case 0x0005:
-                    /* code */
                     if(registers[Vx] > registers[Vy]) {
                         registers[15] = 1;
                     } else {
@@ -445,7 +497,6 @@ void decode() {
                 break;
 
                 case 0x0006:
-                    /* code */
                     if((registers[Vx] & 1) == 1) {
                         registers[15] = 1;
                     } else {
@@ -456,7 +507,6 @@ void decode() {
                 break;
 
                 case 0x0007:
-                    /* code */
                     if(registers[Vy] > registers[Vx]) {
                         registers[15] = 1;
                     } else {
@@ -467,7 +517,6 @@ void decode() {
                 break;
 
                 case 0x000E:
-                    /* code */
                     if(((registers[Vx] >> 7) & 1) == 1) {
                         registers[15] = 1;
                     } else {
@@ -480,37 +529,29 @@ void decode() {
         break;
 
         case 0x9000:
-            /* code */
             if(registers[Vx] != registers[Vy]) {
                 program_counter += 2;
             }
         break;
 
         case 0xA000:
-            /* code */
             index_register = nnn;
         break;
 
         case 0xB000:
-            /* code */
             program_counter = nnn + registers[0];
         break;
 
         case 0xC000: {
-            /* code */
             int randNum = std::rand()%256;
             registers[Vx] = randNum & kk;
             break;
         }
 
         case 0xD000: {
-            /* code */
+            
             registers[15] = 0;
             for(int r = 0; r < n; r ++) {
-                /*if((registers[Vy] + r) >= 32) {
-                    break;
-                }*/
-                
                 for(int c = 0; c < 8; c++) {
                     uint8_t x_cord = (registers[Vx] & 63) + c;
                     uint8_t y_cord = (registers[Vy] & 31) + r;
@@ -522,10 +563,6 @@ void decode() {
                     } else if(curPix != 0) {
                         display[y_cord * 64 + x_cord] = 0xFFFFFFFF;
                     }
-
-                    /*if((registers[Vx] & 63) + c >= 64) {
-                        break;
-                    }*/
                 }
             }
             break;
@@ -542,7 +579,7 @@ void decode() {
                 break;
             
             case 0x00A1:
-                /* code */
+                
                 if(keys[registers[Vx]] == 0) {
                     program_counter += 2;
                 }
@@ -554,12 +591,12 @@ void decode() {
             switch (oppcode & 0x00FF)
             {
             case 0x0007:
-                /* code */
+                
                 registers[Vx] = delay_timer;
                 break;
             
             case 0x000A:
-                /* code */
+                
                 if (keys[0])
                 {
                     registers[Vx] = 0;
@@ -632,27 +669,27 @@ void decode() {
                 break;
 
             case 0x0015:
-                /* code */
+                
                 delay_timer = registers[Vx];
                 break;
 
             case 0x0018:
-                /* code */
+                
                 sound_timer = registers[Vx];
                 break;
 
             case 0x001E:
-                /* code */
+                
                 index_register += registers[Vx];
                 break;
 
             case 0x0029:
-                /* code */
+                
                 index_register = 0x0050U + (5 * registers[Vx]);
                 break;
 
             case 0x0033: {
-                /* code */
+                
                 uint8_t temp = registers[Vx];
                 memory[index_register + 2] = temp % 10;
                 temp /= 10;
@@ -663,7 +700,7 @@ void decode() {
             }
 
             case 0x0055: {
-                /* code */
+                
                 for(int i = 0; i <= Vx; i++) {
                     memory[index_register + i] = registers[i];
                 }
@@ -671,7 +708,7 @@ void decode() {
             }
 
             case 0x0065:
-                /* code */
+                
                 for(int i = 0; i <= Vx; i++) {
                     registers[i] = memory[index_register + i];
                 }
@@ -682,11 +719,9 @@ void decode() {
 }
 
 int main(int argc, char** argv) {
-    /*while(true) {
-        fetch();
-        std::this_thread::sleep_for(std::chrono::milliseconds(50)); // change time to smthing else later
-    }*/
-    std::cout << "sp is " << int(stack_pointer) << std::endl;
+    int selectedRom = 0;
+    bool romMenu = true;
+    bool isInit = false;
 
 	int videoScale = 20;
     int VIDEO_WIDTH = 64;
@@ -696,37 +731,80 @@ int main(int argc, char** argv) {
 
     Platform platform("CHIP-8 Emulator", VIDEO_WIDTH * videoScale, VIDEO_HEIGHT * videoScale, VIDEO_WIDTH, VIDEO_HEIGHT);
 
+    bool quit = false;
     auto lastCycle = std::chrono::system_clock::now();
-
-    initialize_font();
-    load_memory();
-
-    bool quit;
-
     while(!quit) {
-        
-        if(nextCycle) {
-            nextCycle = false;
-            lastCycle = std::chrono::system_clock::now();
-            decode();
-            platform.Update(display, sizeof(display[0]) * 64);
+        if(romMenu) {
+            if(nextCycle) {
+                nextCycle = false;
+                lastCycle = std::chrono::system_clock::now();
+                
+                rom_selector(platform, selectedRom);
 
-            if(delay_timer > 0) {
-                delay_timer--;
+                if(keys[4] != 0 && selectedRom > 0) {
+                    selectedRom--;
+                    keys[4] = 0;
+                } else if(keys[6] != 0 && selectedRom < sizeof(rom_files)/sizeof(rom_files[0]) - 1) {
+                    selectedRom++;
+                    keys[6] = 0;
+                }
+
+                if (keys[5] != 0) {
+                    romMenu = false;
+                }
+
+                if(delay_timer > 0) {
+                    delay_timer--;
+                }
             }
 
-            if(sound_timer > 0) {
-                sound_timer--;
+            quit = platform.ProcessInput(keys);
+
+            auto curTime = std::chrono::system_clock::now();
+            auto passedTime = std::chrono::duration<float, std::chrono::milliseconds::period>(curTime - lastCycle).count();
+
+            if(passedTime > waitTime) {
+                nextCycle = true;
             }
-        }
+        } else {
+            if(!isInit) {
+                isInit = true;
+                initialize_font();
+                load_memory(selectedRom);
+            }
 
-        quit = platform.ProcessInput(keys);
-        auto curTime = std::chrono::system_clock::now();
-        auto passedTime = std::chrono::duration<float, std::chrono::milliseconds::period>(curTime - lastCycle).count();
+            if(nextCycle) {
+                nextCycle = false;
+                lastCycle = std::chrono::system_clock::now();
+                decode();
+                platform.Update(display, sizeof(display[0]) * 64);
 
-        if(passedTime > waitTime) {
-            nextCycle = true;
+                if (keys[15] != 0) {
+                    clear_memory();
+                    clear_display();
+                    platform.ClearRender();
+                    romMenu = true;
+                    isInit = false;
+                }
+
+                if(delay_timer > 0) {
+                    delay_timer--;
+                }
+
+                if(sound_timer > 0) {
+                    sound_timer--;
+                }
+            }
+
+            quit = platform.ProcessInput(keys);
+            auto curTime = std::chrono::system_clock::now();
+            auto passedTime = std::chrono::duration<float, std::chrono::milliseconds::period>(curTime - lastCycle).count();
+
+            if(passedTime > waitTime) {
+                nextCycle = true;
+            }
         }
     }
+
     return 0;
 }
