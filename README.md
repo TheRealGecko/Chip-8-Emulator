@@ -10,7 +10,7 @@ I built a CHIP-8 "emulator" that replicates the behavior of a simple 8-bit virtu
 ## See it in action
 <table> <tr> <td align="center"> <strong>ROM Menu</strong><br> <img src="https://github.com/TheRealGecko/Chip-8-Emulator/blob/61cb57a4f9ed982664bf5c1fada0a8e32d16884c/demo_gifs/chip8_rom_menu.gif" width="400"/> </td> <td align="center"> <strong>Pong</strong><br> <img src="https://github.com/TheRealGecko/Chip-8-Emulator/blob/61cb57a4f9ed982664bf5c1fada0a8e32d16884c/demo_gifs/chip8_pong.gif" width="400"/> </td> </tr> <tr> <td align="center"> <strong>Tetris</strong><br> <img src="https://github.com/TheRealGecko/Chip-8-Emulator/blob/61cb57a4f9ed982664bf5c1fada0a8e32d16884c/demo_gifs/chip8_tetris.gif" width="400"/> </td> <td align="center"> <strong>Lunar Lander</strong><br> <img src="https://github.com/TheRealGecko/Chip-8-Emulator/blob/61cb57a4f9ed982664bf5c1fada0a8e32d16884c/demo_gifs/chip8_lunar_lander.gif" width="400"/> </td> </tr> </table>
 
-*Note: I wrote the emulator, not the ROM/game files. The ROM files can be found [here](https://github.com/kripod/chip8-roms/tree/master/games))!*
+*Note: I wrote the emulator, not the ROM/game files. The ROM files can be found [here](https://github.com/kripod/chip8-roms/tree/master/games)!*
 
 ## What is Chip-8?
 Chip-8 is an interpreted language designed for 8-bit systems in the mid-1970s. Since writing an interpreter for it closely resembles the process of writing emulators in general, I figured it would be a great way to try out emu-dev!
