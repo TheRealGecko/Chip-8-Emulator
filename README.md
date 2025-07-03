@@ -13,4 +13,4 @@ I built a CHIP-8 "emulator" that replicates the behavior of a simple 8-bit virtu
 ## What is Chip-8?
 Chip-8 is an interpreted language designed for 8-bit systems in the mid-1970s. Since writing an interpreter for it closely resembles the process of writing emulators in general, I figured it would be a great way to try out emu-dev!
 
-*Note: I programmed the emulator, not the ROM/game files. The ROM files can be found here ([source](https://github.com/kripod/chip8-roms/tree/master/games))!*
+*Note: I wrote the emulator, not the ROM/game files. The ROM files can be found here ([source](https://github.com/kripod/chip8-roms/tree/master/games))!*
